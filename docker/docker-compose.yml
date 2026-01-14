@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cbnu_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-chatbot_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-chatbot_pass}
+      POSTGRES_DB: ${DB_NAME:-chatbot_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-chatbot_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Service
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: cbnu_backend
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-chatbot_user}:${DB_PASSWORD:-chatbot_pass}@postgres:5432/${DB_NAME:-chatbot_db}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+      - ../data:/data
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend Service (Optional - if using Node.js/React)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: cbnu_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    command: npm start
+
+volumes:
+  postgres_data:
