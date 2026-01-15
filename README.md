@@ -17,7 +17,7 @@ chatbot-oia/
 ## Quick Start
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.10+
 - Docker & Docker Compose
 - PostgreSQL
 - OpenAI API Key
